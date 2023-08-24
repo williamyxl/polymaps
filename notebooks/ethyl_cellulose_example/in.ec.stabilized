@@ -1,0 +1,72 @@
+variable       Text equal 300.0        # reference temperature, in K
+variable       Ndump equal 1000
+variable       Ndump2 equal 100
+
+units          real
+boundary       p p p
+atom_style     full
+include        "opls.ff"
+
+read_data      "monomer.data" extra/special/per/atom 2
+
+replicate      3 3 3
+
+velocity       all create ${Text} 4928459 dist gaussian
+
+thermo         ${Ndump}
+thermo_style   custom step dt cpu time temp press density pe ke xlo xhi ylo yhi zlo zhi atoms
+thermo_modify  flush yes
+
+neigh_modify   every 1 delay 0 check yes
+
+variable       padding equal 20
+
+variable       xLo equal xlo-${padding}
+variable       xHi equal xhi+${padding}
+variable       yLo equal ylo-${padding}
+variable       yHi equal yhi+${padding}
+variable       zLo equal zlo-${padding}
+variable       zHi equal zhi+${padding}
+
+comm_style     tiled
+fix            fxbalance all balance 100 1.1 rcb
+
+# Adjust box dimensions:
+change_box     all x final ${xLo} ${xHi} units box
+change_box     all y final ${yLo} ${yHi} units box
+change_box     all z final ${zLo} ${zHi} units box
+minimize       1.0e-20 1.0e-20 100000 100000
+reset_timestep 0
+
+# relax the cell
+dump           dump1 all custom ${Ndump} traj.lammpstrj.relax id mol type element mass x y z ix iy iz
+dump_modify    dump1 element O C C O C O C C C O O C C O C C H H H H H H H H H H H H H H H H H H H H C C O O H
+
+timestep       2.0
+fix            fxlangevin all langevin ${Text} ${Text} $(150.0*dt) 12345
+fix            fxnve all nve 
+run            20000
+write_data     "monomers.pool.data"
+unfix          fxnve
+unfix          fxlangevin
+undump         dump1
+
+# Reaction with NVT
+timestep       2.0
+dump           dump2 all custom ${Ndump2} traj.lammpstrj id mol type element mass x y z ix iy iz
+dump_modify    dump2 element O C C O C O C C C O O C C O C C H H H H H H H H H H H H H H H H H H H H C C O O H
+molecule       mol1 rxn1_ec_unreacted.data_template
+molecule       mol2 rxn1_ec_reacted.data_template
+
+thermo         ${Ndump2}
+
+fix            myrxns all bond/react stabilization yes statted_grp .03 react rxn1 all 1 0.0 3.5 mol1 mol2 rxn1_ec_map
+fix            nvtReact statted_grp_REACT nvt temp ${Text} ${Text} $(100.0*dt)
+fix            velocityRescale bond_react_MASTER_group temp/rescale 1 ${Text} ${Text} 10 1
+
+thermo_style   custom step time temp press density f_myrxns[1] atoms
+
+run            10000
+write_data     data.*
+write_data     data.final
+
