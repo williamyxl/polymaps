@@ -1,0 +1,39 @@
+ # https://github.com/t3rodrig/LammpsTutorials/blob/master/liquid-vapor/in.spce.txt
+variable       Text equal 300.0        # reference temperature, in K
+variable       Ndump equal 1000
+variable       Ndump2 equal 100
+
+units          real
+boundary       p p p
+atom_style     full
+
+read_data      "single_water.data"
+include        "tip4p2005.ff"
+
+replicate      6 6 6
+fix            fxshake all shake 0.001 20 0 b 1 a 1
+
+variable       xc equal       0.5*(xlo+xhi)
+variable       yc equal       0.5*(ylo+yhi)
+variable       zc equal       0.5*(zlo+zhi)
+variable       xLo equal      -0.5*lx
+variable       xHi equal      0.5*lx
+variable       yLo equal      -0.5*ly
+variable       yHi equal      0.5*ly
+variable       zLo equal      -2*lz
+variable       zHi equal      2*lz
+
+displace_atoms all move -${xc} -${yc} -${zc} units box
+change_box     all x final ${xLo} ${xHi} units box
+change_box     all y final ${yLo} ${yHi} units box
+change_box     all z final ${zLo} ${zHi} units box
+
+comm_style     tiled
+fix            fxbalance all balance 100 1.1 rcb
+reset_timestep 0
+write_data     data.long_box.interfaces nocoeff
+
+thermo         ${Ndump}
+thermo_style   custom step dt cpu time temp press density pe ke xlo xhi ylo yhi zlo zhi atoms
+thermo_modify  flush yes
+run            0

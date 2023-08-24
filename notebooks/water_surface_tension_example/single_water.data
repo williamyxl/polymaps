@@ -1,0 +1,32 @@
+LAMMPS data file by xyan11@uic.edu
+
+3 atoms
+2 atom types
+2 bonds
+1 bond types
+1 angles
+1 angle types
+
+2.0 5.1 xlo xhi
+6.8 9.9 ylo yhi
+1.0 4.1 zlo zhi
+
+Masses
+
+1 1.008 # H
+2 15.9994 # O
+
+Atoms # full
+
+1    1    2    -1.1128    3.535001654    8.251721848    2.199860082
+2    1    1     0.5564    4.02864293    7.546701603    2.618718502
+3    1    1     0.5564    3.299394858    8.839156221    2.917906109
+
+Bonds
+
+1 1 1 2
+1 1 1 3
+
+Angles
+
+1 1 2 1 3

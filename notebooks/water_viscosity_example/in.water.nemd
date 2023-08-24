@@ -1,0 +1,58 @@
+variable       T equal 300.0
+variable       dt equal 0.1
+variable       kB equal 1.3806504e-23    # [J/K] Boltzmann
+variable       atm2Pa equal 101325.0
+variable       A2m equal 1.0e-10
+variable       fs2s equal 1.0e-15
+variable       convert equal ${atm2Pa}*${fs2s}
+variable       Nprint equal   500
+variable       Ndump equal    500
+
+units          real
+atom_style     full
+boundary       p p p
+
+read_data      water.relaxed
+include        tip4p2005.ff
+
+group          hydrogen type 1
+group          oxygen type 2
+neighbor       2.0 bin
+neigh_modify   every 1 delay 0 check yes
+fix            constrain all shake 1.0e-4 100 0 b 1 a 1
+
+
+timestep       ${dt}
+fix            fxnvt all nvt temp $T $T $(500.0*dt)
+thermo         ${Nprint}
+thermo_style   custom step temp density press lx ly lz
+run            10000
+unfix          fxnvt
+
+variable       xzrate equal 0.00005
+change_box     all triclinic
+kspace_style   pppm/tip4p 1.0e-4
+dump           dump1 all custom ${Ndump} traj.nemd.lammpstrj id mol type x y z ix iy iz
+dump           dump2 all xyz ${Ndump} traj.nemd.xyz
+fix            1 all nvt/sllod temp $T $T 100
+fix            2 all deform 1 xz erate ${xzrate} remap v
+
+compute        layers all chunk/atom bin/1d z center 0.05 units reduced
+fix            4 all ave/chunk 20 250 5000 layers vx file profile.nemd.3d.xz
+
+compute        originalTemp all temp
+compute        deformTemp all temp/deform
+
+variable       viscosity equal -pxz*${convert}/(v_xzrate)
+thermo_style   custom step c_deformTemp c_originalTemp density press pxx pyy pzz pxy pxz pyz v_viscosity
+thermo_modify  flush yes
+run            10000
+
+fix            runningAverage all ave/time 1 100 ${Nprint} v_viscosity ave running
+
+thermo_style   custom step c_deformTemp c_originalTemp density press pxx pyy pzz pxy pxz pyz v_viscosity f_runningAverage
+thermo_modify  flush yes
+
+write_data     water_nemd.* nocoeff
+
+run            100000
