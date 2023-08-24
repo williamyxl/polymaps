@@ -1,0 +1,28 @@
+
+units          real
+atom_style     full
+boundary       p p p
+
+read_data      data.cgenff36
+include        cgenff36.ff
+replicate      1 4 4
+
+variable       xc equal       0.5*(xlo+xhi)
+variable       yc equal       0.5*(ylo+yhi)
+variable       zc equal       0.5*(zlo+zhi)
+variable       xLo equal      -0.5*lx
+variable       xHi equal      0.5*lx
+variable       yLo equal      -0.5*ly
+variable       yHi equal      0.5*ly
+variable       zLo equal      -0.5*lz
+variable       zHi equal      0.5*lz
+
+displace_atoms all move -${xc} -${yc} -${zc} units box
+change_box     all x final ${xLo} ${xHi} units box
+change_box     all y final ${yLo} ${yHi} units box
+change_box     all z final ${zLo} ${zHi} units box
+#change_box     all x final -9.87 9.87 units box
+#change_box     all y final -9.87 9.87 units box
+#change_box     all z final -9.87 9.87 units box
+write_data     bulk_melt.data.coeff pair ij
+write_data     bulk_melt.data nocoeff

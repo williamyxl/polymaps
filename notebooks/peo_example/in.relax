@@ -1,0 +1,29 @@
+
+variable       Nprint equal 100
+
+units          real
+atom_style     full
+boundary       p p p
+
+read_data      bulk_melt.data
+include        cgenff36.ff
+
+
+thermo         ${Nprint}
+thermo_style   custom step dt cpu temp press density pe ke xlo xhi ylo yhi zlo zhi
+thermo_modify  flush yes
+
+
+velocity       all create 300.0 1234 rot no dist gaussian
+
+minimize       1.0e-20 1.0e-20 1000 1000
+#reset_timestep 0
+dump           dump1 all custom/mpiio ${Nprint} traj.lammpstrj id mol type element mass q x y z ix iy iz
+dump           dump2 all xyz/mpiio ${Nprint} traj.xyz
+fix            fxnpt all npt temp 300.0 300.0 150 iso 1.0 1.0 250
+timestep       1.0
+run            10000
+unfix          fxnpt
+write_data     data.* nocoeff
+
+write_data     data.relaxed nocoeff
